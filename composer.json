@@ -1,0 +1,25 @@
+{
+    "name": "braid/carbon-availability",
+    "description": "The easiest way to determine calendar availability using Carbon.",
+    "keywords": ["Carbon", "availability", "unavailability"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Justin Schroeder",
+            "email": "justin@wearebraid.com",
+            "homepage": "http://www.wearebraid.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "nesbot/carbon": "^2.25"
+    },
+    "autoload": {
+        "psr-4": {
+            "Braid\\": "src/"
+        }
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^8.4"
+    }
+}

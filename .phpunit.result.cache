@@ -1,0 +1,1 @@
+C:37:"PHPUnit\Runner\DefaultTestResultCache":240:{a:2:{s:7:"defects";a:1:{s:56:"Tests\CarbonAvailabilityTest::testBackToBackPeriodsMerge";i:4;}s:5:"times";a:2:{s:40:"Tests\CarbonAvailabilityTest::testIsTrue";d:0.022;s:56:"Tests\CarbonAvailabilityTest::testBackToBackPeriodsMerge";d:0.061;}}}
