@@ -1,5 +1,5 @@
 {
-    "name": "braid/carbon-availability",
+    "name": "wearebraid/carbon-availability",
     "description": "The easiest way to determine calendar availability using Carbon.",
     "keywords": ["Carbon", "availability", "unavailability"],
     "license": "MIT",
