@@ -2,6 +2,8 @@
 
 namespace Braid;
 
+use Carbon\CarbonPeriod;
+
 class CarbonAvailability
 {
     /**
@@ -25,10 +27,39 @@ class CarbonAvailability
      * @param array $unavailablePeriods [[string $start_at, string $end_at], ...]
      * @return void
      */
-    public function __constructor(array $availableTimes = [], array $unavailableTimes = [])
+    public function __construct(array $availableTimes = [], array $unavailableTimes = [])
     {
         $this->availability = static::mergePeriods(static::createPeriods($availableTimes));
         $this->unavailability = static::mergePeriods(static::createPeriods($unavailableTimes));
+    }
+
+    /**
+     * Return all the available time periods with unavailable times removed.
+     *
+     * @return array
+     */
+    public function periods()
+    {
+        return static::removePeriods($this->availability, $this->unavailability);
+    }
+
+    /**
+     * Break up the current availability into "sessions" that represent bookable
+     * times.
+     *
+     * @param mixed $interval
+     * @return [Carbon]
+     */
+    public function sessions($interval)
+    {
+        return array_reduce($this->periods(), function ($times, $available) use ($interval) {
+            foreach ($available->setDateInterval($interval)->excludeEndDate() as $time) {
+                if ($available->startsBeforeOrAt($time) && $available->endsAfterOrAt($time->copy()->add($interval))) {
+                    $times[] = $time;
+                }
+            }
+            return $times;
+        }, []);
     }
 
     /**
@@ -45,32 +76,100 @@ class CarbonAvailability
     }
 
     /**
-     * Given an array of periods, merge them together.
+     * Given an array of periods, merge them together, this will recurse until
+     * it has found no overlapping periods within the array.
      *
      * @param array $periods
      * @return [CarbonPeriod]
      */
     public static function mergePeriods(array $periods)
     {
-        $merged = [];
-        foreach ($periods as $period) {
-            $didOverlap = false;
-            foreach ($merged as &$mergedPeriod) {
-                if (static::inclusiveOverlap($mergedPeriod, $period)) {
-                    $didOverlap = true;
-                    if ($period->getStartDate()->lt($mergedPeriod->getStartDate())) {
-                        $mergedPeriod->setStartDate($period->getStartDate());
-                    }
-                    if ($period->getEndDate()->gt($mergedPeriod->getEndDate())) {
-                        $mergedPeriod->setEndDate($period->getEndDate());
-                    }
+        return array_reduce($periods, function ($merged, $period) {
+            foreach ($merged as $mergedPeriod) {
+                if ($didOverlap = static::expandPeriod($mergedPeriod, $period)) {
+                    $merged = static::mergePeriods($merged);
+                    break;
                 }
             }
-            if (!$didOverlap) {
-                $merged[] = $period;
+            return empty($didOverlap) ? array_merge($merged, [$period]) : $merged;
+        }, []);
+    }
+
+    /**
+     * Given 2 periods, expand the first (by reference) to encompass both, but
+     * only if the 2 periods have some kind of overlap.
+     *
+     * @param CarbonPeriod $expand
+     * @param CarbonPeriod $expandTo
+     * @return bool
+     */
+    public static function expandPeriod($expand, $expandTo)
+    {
+        if (static::inclusiveOverlap($expand, $expandTo)) {
+            $expand->setStartDate($expand->getStartDate()->min($expandTo->getStartDate()));
+            $expand->setEndDate($expand->getEndDate()->max($expandTo->getEndDate()));
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Given a group of available periods, remove from them the unavailable
+     * periods and return a new array.
+     *
+     * @param [CarbonPeriod] $availability
+     * @param [CarbonPeriod] $unavailability
+     * @return [CarbonPeriod]
+     */
+    public static function removePeriods($availability, $unavailability)
+    {
+        return array_reduce($availability, function ($merged, $available) use ($unavailability) {
+            foreach ($unavailability as $unavailable) {
+                $available = static::subtractPeriod($available, $unavailable);
+                if (is_array($available)) {
+                    // Availability was split, recursively apply unavailability
+                    return array_merge($merged, static::removePeriods($available, $unavailability));
+                }
+                if (!$available) {
+                    // The availability was completely removed
+                    return $merged;
+                }
+            }
+            return array_merge($merged, [$available]);
+        }, []);
+    }
+
+    /**
+     * Given a carbon period, subtract another carbon period from it.
+     *
+     * @param CarbonPeriod $avail
+     * @param CarbonPeriod $unavail
+     * @return CarbonPeriod|[CarbonPeriod]|false always returns an array of carbon periods.
+     */
+    public static function subtractPeriod($avail, $unavail)
+    {
+        if ($avail->overlaps($unavail)) {
+            if ($avail->startsBefore($unavail->getStartDate()) && $avail->endsAfter($unavail->getEndDate())) {
+                // If the unavailability splits the available time, split it.
+                return [
+                    CarbonPeriod::create($avail->getStartDate(), $unavail->getStartDate()),
+                    CarbonPeriod::create($unavail->getEndDate(), $avail->getEndDate())
+                ];
+            }
+            if ($avail->startsAfter($unavail->getStartDate()) && $avail->endsAfter($unavail->getEndDate())) {
+                // Trim the front end of the availability
+                $avail->setStartDate($unavail->getEndDate());
+            }
+            if ($avail->endsAfter($unavail->getStartDate()) && $avail->endsBefore($unavail->getEndDate())) {
+                // Trim the back end of the availability
+                $avail->setEndDate($unavail->getStartDate());
+            }
+            if ($avail->startsAfterOrAt($unavail->getStartDate()) && $avail->endsBeforeOrAt($unavail->getEndDate())) {
+                // Total Eclipse, remove the entire period
+                return false;
             }
         }
-        return $merged;
+        return $avail;
     }
 
     /**
@@ -81,11 +180,22 @@ class CarbonAvailability
      * @param CarbonPeriod $periodB
      * @return void
      */
-    public static function inclusiveOverlap($periodA, $periodB) {
+    public static function inclusiveOverlap($periodA, $periodB)
+    {
         return $periodA->overlaps($periodB) ||
             $periodA->getStartDate()->eq($periodB->getStartDate()) ||
             $periodA->getStartDate()->eq($periodB->getEndDate()) ||
             $periodB->getStartDate()->eq($periodA->getEndDate()) ||
             $periodB->getEndDate()->eq($periodA->getEndDate());
+    }
+
+    /**
+     * Short hand for functional instance creation.
+     *
+     * @return Braid\CarbonAvailability
+     */
+    public static function create(...$args)
+    {
+        return new static(...$args);
     }
 }
