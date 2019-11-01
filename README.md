@@ -16,7 +16,7 @@ use Braid\CarbonAvailability;
  *                        [==========]     | ______________________
  *                    [xxxxxxx]            | Booked time blocks
  *                                [x]      | ______________________
- * [=================]         [=]         | Merged availability
+ * [==========] [====]         [=]         | Merged availability
  * |  |  |  |   |  |           |           | Available sessions
  */
 
