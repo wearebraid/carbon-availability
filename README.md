@@ -1,4 +1,5 @@
 # CarbonAvailability
+[![Build Status](https://travis-ci.com/wearebraid/carbon-availability.svg?branch=master)](https://travis-ci.com/wearebraid/carbon-availability)
 
 Given some available times and some unavailable times how do you determine what
 time slots you can schedule an event of a certain duration (think something like
