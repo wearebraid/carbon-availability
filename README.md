@@ -43,3 +43,9 @@ $startTimes = $availability->session('15 minutes');
 11:30
 */
 ```
+
+## Installation
+
+```sh
+composer require wearebraid/carbon-availability
+```
