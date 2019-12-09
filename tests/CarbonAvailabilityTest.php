@@ -400,4 +400,25 @@ class CarbonAvailabilityTest extends TestCase
             '2019-01-01 11:30:00',
         ]);
     }
+
+    /**
+     * [===============]
+     * [xxxxxxxxxxx]
+     *             [===]
+     *             |
+     */
+    public function testAvailabilityStartsWhenBookingStarts()
+    {
+        $availability = [['2019-12-10 18:00:00', '2019-12-10 19:00:00']];
+
+        $booked = [['2019-12-10 17:59:59', '2019-12-10 18:45:00']];
+
+        $availability = new CarbonAvailability($availability, $booked);
+        $sessions = $availability->sessions('15 minutes');
+
+        $this->assertCount(1, $sessions);
+        $this->assertEquals([
+            $sessions[0]->toDateTimeString()
+        ], ['2019-12-10 18:45:00']);
+    }
 }
