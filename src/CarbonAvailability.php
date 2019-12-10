@@ -156,11 +156,11 @@ class CarbonAvailability
                     CarbonPeriod::create($unavail->getEndDate(), $avail->getEndDate())
                 ];
             }
-            if ($avail->startsAfter($unavail->getStartDate()) && $avail->endsAfter($unavail->getEndDate())) {
+            if ($avail->startsAfterOrAt($unavail->getStartDate()) && $avail->endsAfter($unavail->getEndDate())) {
                 // Trim the front end of the availability
                 $avail->setStartDate($unavail->getEndDate());
             }
-            if ($avail->endsAfter($unavail->getStartDate()) && $avail->endsBefore($unavail->getEndDate())) {
+            if ($avail->endsAfter($unavail->getStartDate()) && $avail->endsBeforeOrAt($unavail->getEndDate())) {
                 // Trim the back end of the availability
                 $avail->setEndDate($unavail->getStartDate());
             }
